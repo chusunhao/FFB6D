@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import cv2
 import torch
@@ -19,7 +18,7 @@ from models.RandLA.helper_tool import DataProcessing as DP
 try:
     from neupeak.utils.webcv2 import imshow, waitKey
 except ImportError:
-    from cv2 import imshow, waitKey
+    from cv2 import imshow, imwrite, waitKey
 
 
 class Dataset():
@@ -43,7 +42,7 @@ class Dataset():
         self.cls_root = os.path.join(self.root, "data/%02d/" % self.cls_id)
         self.rng = np.random
         meta_file = open(os.path.join(self.cls_root, 'gt.yml'), "r")
-        self.meta_lst = yaml.load(meta_file)
+        self.meta_lst = yaml.safe_load(meta_file)
         if dataset_name == 'train':
             self.add_noise = True
             real_img_pth = os.path.join(
@@ -255,6 +254,7 @@ class Dataset():
         if self.DEBUG:
             show_nrm_map = ((nrm_map + 1.0) * 127).astype(np.uint8)
             imshow("nrm_map", show_nrm_map)
+            # imwrite("nrm_map.jpg", show_nrm_map)
 
         dpt_m = dpt_mm.astype(np.float32) / cam_scale
         dpt_xyz = self.dpt_2_pcld(dpt_m, 1.0, K)
@@ -497,4 +497,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# vim: ts=4 sw=4 sts=4 expandtab

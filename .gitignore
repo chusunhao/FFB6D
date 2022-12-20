@@ -11,3 +11,6 @@ ffb6d/datasets/ycb/YCB_Video_Dataset
 ffb6d/datasets/linemod/Linemod_preprocessed
 apex/
 normalSpeed/
+/.idea/
+****/build/
+ffb6d/models/RandLA/utils/nearest_neighbors/lib/python/KNN_NanoFLANN-0.0.0.egg-info

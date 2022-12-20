@@ -35,7 +35,7 @@ parser.add_argument(
     help="Target dataset, ycb or linemod. (linemod as default)."
 )
 parser.add_argument(
-    "-cls", type=str, default="ape",
+    "-cls", type=str, default="cat",
     help="Target object to eval in LineMOD dataset. (ape, benchvise, cam, can," +
     "cat, driller, duck, eggbox, glue, holepuncher, iron, lamp, phone)"
 )
@@ -93,9 +93,11 @@ def cal_view_pred_pose(model, data, epoch=0, obj_id=-1):
             elif data[key].dtype in [np.int32, np.uint32]:
                 cu_dt[key] = torch.LongTensor(data[key].astype(np.int32)).cuda()
             elif data[key].dtype in [torch.uint8, torch.float32]:
-                cu_dt[key] = data[key].float().cuda()
+                # cu_dt[key] = data[key].float().cuda()
+                cu_dt[key] = data[key].float()
             elif data[key].dtype in [torch.int32, torch.int16]:
-                cu_dt[key] = data[key].long().cuda()
+                # cu_dt[key] = data[key].long().cuda()
+                cu_dt[key] = data[key].long()
         end_points = model(cu_dt)
         _, classes_rgbd = torch.max(end_points['pred_rgbd_segs'], 1)
 
@@ -160,7 +162,7 @@ def main():
         obj_id = config.lm_obj_dict[args.cls]
     test_loader = torch.utils.data.DataLoader(
         test_ds, batch_size=config.test_mini_batch_size, shuffle=False,
-        num_workers=20
+        num_workers=0
     )
 
     rndla_cfg = ConfigRandLA
@@ -168,7 +170,8 @@ def main():
         n_classes=config.n_objects, n_pts=config.n_sample_points, rndla_cfg=rndla_cfg,
         n_kps=config.n_keypoints
     )
-    model.cuda()
+    # model.cuda()
+    model.cpu()
 
     # load status from checkpoint
     if args.checkpoint is not None:
