@@ -34,9 +34,9 @@ from utils.pvn3d_eval_utils_kpls import TorchEval
 from utils.basic_utils import Basic_Utils
 import datasets.linemod.linemod_dataset as dataset_desc
 
-from apex.parallel import DistributedDataParallel
-from apex.parallel import convert_syncbn_model
-from apex import amp
+# from apex.parallel import DistributedDataParallel
+# from apex.parallel import convert_syncbn_model
+# from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
 
 
@@ -76,7 +76,7 @@ parser.add_argument(
     "-eval_net", action='store_true', help="whether is to eval net."
 )
 parser.add_argument(
-    '--cls', type=str, default="ape",
+    '--cls', type=str, default="cat",
     help="Target object. (ape, benchvise, cam, can, cat, driller," +
     "duck, eggbox, glue, holepuncher, iron, lamp, phone)"
 )
@@ -90,23 +90,26 @@ parser.add_argument("-cal_metrics", action="store_true")
 parser.add_argument("-view_dpt", action="store_true")
 parser.add_argument('-debug', action='store_true')
 
-parser.add_argument('--local_rank', type=int, default=0)
-parser.add_argument('--gpu_id', type=list, default=[0, 1, 2, 3, 4, 5, 6, 7])
-parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
-parser.add_argument('-g', '--gpus', default=8, type=int,
-                    help='number of gpus per node')
-parser.add_argument('-nr', '--nr', default=0, type=int,
-                    help='ranking within the nodes')
+parser.add_argument('--device', type=str, default="cpu")
+
+
+# parser.add_argument('--local_rank', type=int, default=0)
+# parser.add_argument('--gpu_id', type=list, default=[0, 1, 2, 3, 4, 5, 6, 7])
+# parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
+# parser.add_argument('-g', '--gpus', default=8, type=int,
+#                     help='number of gpus per node')
+# parser.add_argument('-nr', '--nr', default=0, type=int,
+#                     help='ranking within the nodes')
 parser.add_argument('--epochs', default=2, type=int,
                     metavar='N', help='number of total epochs to run')
-parser.add_argument('--gpu', type=str, default="0,1,2,3,4,5,6,7")
+# parser.add_argument('--gpu', type=str, default="0,1,2,3,4,5,6,7")
 parser.add_argument('--deterministic', action='store_true')
 parser.add_argument('--keep_batchnorm_fp32', default=True)
-parser.add_argument('--opt_level', default="O0", type=str,
-                    help='opt level of apex mix presision trainig.')
+# parser.add_argument('--opt_level', default="O0", type=str,
+#                     help='opt level of apex mix presision trainig.')
 args = parser.parse_args()
 
-os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+# os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 config = Config(ds_name='linemod', cls_type=args.cls)
 bs_utils = Basic_Utils(config)
@@ -152,7 +155,7 @@ def checkpoint_state(model=None, optimizer=None, best_prec=None, epoch=None, it=
         "best_prec": best_prec,
         "model_state": model_state,
         "optimizer_state": optim_state,
-        "amp": amp.state_dict(),
+        # "amp": amp.state_dict(),
     }
 
 
@@ -186,8 +189,8 @@ def load_checkpoint(model=None, optimizer=None, filename="checkpoint"):
             model.load_state_dict(ck_st)
         if optimizer is not None and ck["optimizer_state"] is not None:
             optimizer.load_state_dict(ck["optimizer_state"])
-        if ck.get("amp", None) is not None:
-            amp.load_state_dict(ck["amp"])
+        # if ck.get("amp", None) is not None:
+        #     amp.load_state_dict(ck["amp"])
         print("==> Done")
         return it, epoch, best_prec
     else:
@@ -232,13 +235,17 @@ def model_fn_decorator(
             # device = torch.device('cuda:{}'.format(args.local_rank))
             for key in data.keys():
                 if data[key].dtype in [np.float32, np.uint8]:
-                    cu_dt[key] = torch.from_numpy(data[key].astype(np.float32)).cuda()
+                    # cu_dt[key] = torch.from_numpy(data[key].astype(np.float32)).cuda()
+                    cu_dt[key] = torch.from_numpy(data[key].astype(np.float32))
                 elif data[key].dtype in [np.int32, np.uint32]:
-                    cu_dt[key] = torch.LongTensor(data[key].astype(np.int32)).cuda()
+                    # cu_dt[key] = torch.LongTensor(data[key].astype(np.int32)).cuda()
+                    cu_dt[key] = torch.LongTensor(data[key].astype(np.int32))
                 elif data[key].dtype in [torch.uint8, torch.float32]:
-                    cu_dt[key] = data[key].float().cuda()
+                    # cu_dt[key] = data[key].float().cuda()
+                    cu_dt[key] = data[key].float()
                 elif data[key].dtype in [torch.int32, torch.int16]:
-                    cu_dt[key] = data[key].long().cuda()
+                    # cu_dt[key] = data[key].long().cuda()
+                    cu_dt[key] = data[key].long()
 
             end_points = model(cu_dt)
 
@@ -286,10 +293,10 @@ def model_fn_decorator(
             info_dict = loss_dict.copy()
             info_dict.update(acc_dict)
 
-            if not is_eval:
-                if args.local_rank == 0:
-                    writer.add_scalars('loss', loss_dict, it)
-                    writer.add_scalars('train_acc', acc_dict, it)
+            # if not is_eval:
+            #     if args.local_rank == 0:
+            #         writer.add_scalars('loss', loss_dict, it)
+            #         writer.add_scalars('train_acc', acc_dict, it)
             if is_test and test_pose:
                 cld = cu_dt['cld_rgb_nrm'][:, :3, :].permute(0, 2, 1).contiguous()
 
@@ -472,8 +479,8 @@ class Trainer(object):
             for epoch in tbar:
                 if epoch > config.n_total_epoch:
                     break
-                if train_sampler is not None:
-                    train_sampler.set_epoch(epoch)
+                # if train_sampler is not None:
+                #     train_sampler.set_epoch(epoch)
                 # Reset numpy seed.
                 # REF: https://github.com/pytorch/pytorch/issues/5059
                 np.random.seed()
@@ -485,11 +492,11 @@ class Trainer(object):
                     self.optimizer.zero_grad()
                     _, loss, res = self.model_fn(self.model, batch, it=it)
 
-                    with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                        scaled_loss.backward()
+                    # with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    #     scaled_loss.backward()
                     lr = get_lr(self.optimizer)
-                    if args.local_rank == 0:
-                        writer.add_scalar('lr/lr', lr, it)
+                    # if args.local_rank == 0:
+                    #     writer.add_scalar('lr/lr', lr, it)
 
                     self.optimizer.step()
 
@@ -549,33 +556,41 @@ class Trainer(object):
 
 
 def train():
-    print("local_rank:", args.local_rank)
+    # print("local_rank:", args.local_rank)
     cudnn.benchmark = True
     if args.deterministic:
         cudnn.benchmark = False
         cudnn.deterministic = True
         torch.manual_seed(args.local_rank)
         torch.set_printoptions(precision=10)
-    torch.cuda.set_device(args.local_rank)
-    torch.distributed.init_process_group(
-        backend='nccl',
-        init_method='env://',
-    )
+    # torch.cuda.set_device(args.local_rank)
+    # torch.distributed.init_process_group(
+    #     backend='nccl',
+    #     init_method='env://',
+    # )
     torch.manual_seed(0)
 
     if not args.eval_net:
         train_ds = dataset_desc.Dataset('train', cls_type=args.cls)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
+        # train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
+        # train_loader = torch.utils.data.DataLoader(
+        #     train_ds, batch_size=config.mini_batch_size, shuffle=False,
+        #     drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
+        # )
         train_loader = torch.utils.data.DataLoader(
-            train_ds, batch_size=config.mini_batch_size, shuffle=False,
-            drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
-        )
+                    train_ds, batch_size=config.mini_batch_size, shuffle=True,
+                    drop_last=True, num_workers=0
+                )
 
         val_ds = dataset_desc.Dataset('test', cls_type=args.cls)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
+        # val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
+        # val_loader = torch.utils.data.DataLoader(
+        #     val_ds, batch_size=config.val_mini_batch_size, shuffle=False,
+        #     drop_last=False, num_workers=4, sampler=val_sampler
+        # )
         val_loader = torch.utils.data.DataLoader(
             val_ds, batch_size=config.val_mini_batch_size, shuffle=False,
-            drop_last=False, num_workers=4, sampler=val_sampler
+            drop_last=False, num_workers=0
         )
     else:
         test_ds = dataset_desc.Dataset('test', cls_type=args.cls)
@@ -589,17 +604,21 @@ def train():
         n_classes=config.n_objects, n_pts=config.n_sample_points, rndla_cfg=rndla_cfg,
         n_kps=config.n_keypoints
     )
-    model = convert_syncbn_model(model)
-    device = torch.device('cuda:{}'.format(args.local_rank))
-    print('local_rank:', args.local_rank)
+    # model = convert_syncbn_model(model)
+    # device = torch.device('cuda:{}'.format(args.local_rank))
+    if args.device == "gpu":
+        device = torch.device('cuda:0')
+    else:
+        device = torch.device('cpu')
+    # print('local_rank:', args.local_rank)
     model.to(device)
     optimizer = optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
-    opt_level = args.opt_level
-    model, optimizer = amp.initialize(
-        model, optimizer, opt_level=opt_level,
-    )
+    # opt_level = args.opt_level
+    # model, optimizer = amp.initialize(
+    #     model, optimizer, opt_level=opt_level,
+    # )
 
     # default value
     it = -1  # for the initialize value of `LambdaLR` and `BNMomentumScheduler`
@@ -622,16 +641,18 @@ def train():
             assert checkpoint_status is not None, "Failed loadding model."
 
     if not args.eval_net:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank,
-            find_unused_parameters=True
-        )
+        # model = torch.nn.parallel.DistributedDataParallel(
+        #     model, device_ids=[args.local_rank], output_device=args.local_rank,
+        #     find_unused_parameters=True
+        # )
         clr_div = 2
         lr_scheduler = CyclicLR(
             optimizer, base_lr=1e-5, max_lr=1e-3,
             cycle_momentum=False,
-            step_size_up=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div // args.gpus,
-            step_size_down=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div // args.gpus,
+            # step_size_up=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div // args.gpus,
+            # step_size_down=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div // args.gpus,
+            step_size_up=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div,
+            step_size_down=config.n_total_epoch * train_ds.minibatch_per_epoch // clr_div,
             mode='triangular'
         )
     else:
@@ -682,7 +703,8 @@ def train():
         trainer.train(
             it, start_epoch, config.n_total_epoch, train_loader, None,
             val_loader, best_loss=best_loss,
-            tot_iter=config.n_total_epoch * train_ds.minibatch_per_epoch // args.gpus,
+            # tot_iter=config.n_total_epoch * train_ds.minibatch_per_epoch // args.gpus,
+            tot_iter=config.n_total_epoch * train_ds.minibatch_per_epoch,
             clr_div=clr_div
         )
 
@@ -691,5 +713,5 @@ def train():
 
 
 if __name__ == "__main__":
-    args.world_size = args.gpus * args.nodes
+    # args.world_size = args.gpus * args.nodes
     train()
