@@ -235,17 +235,17 @@ def model_fn_decorator(
             # device = torch.device('cuda:{}'.format(args.local_rank))
             for key in data.keys():
                 if data[key].dtype in [np.float32, np.uint8]:
-                    # cu_dt[key] = torch.from_numpy(data[key].astype(np.float32)).cuda()
-                    cu_dt[key] = torch.from_numpy(data[key].astype(np.float32))
+                    cu_dt[key] = torch.from_numpy(data[key].astype(np.float32)).cuda()
+                    # cu_dt[key] = torch.from_numpy(data[key].astype(np.float32))
                 elif data[key].dtype in [np.int32, np.uint32]:
-                    # cu_dt[key] = torch.LongTensor(data[key].astype(np.int32)).cuda()
-                    cu_dt[key] = torch.LongTensor(data[key].astype(np.int32))
+                    cu_dt[key] = torch.LongTensor(data[key].astype(np.int32)).cuda()
+                    # cu_dt[key] = torch.LongTensor(data[key].astype(np.int32))
                 elif data[key].dtype in [torch.uint8, torch.float32]:
-                    # cu_dt[key] = data[key].float().cuda()
-                    cu_dt[key] = data[key].float()
+                    cu_dt[key] = data[key].float().cuda()
+                    # cu_dt[key] = data[key].float()
                 elif data[key].dtype in [torch.int32, torch.int16]:
-                    # cu_dt[key] = data[key].long().cuda()
-                    cu_dt[key] = data[key].long()
+                    cu_dt[key] = data[key].long().cuda()
+                    # cu_dt[key] = data[key].long()
 
             end_points = model(cu_dt)
 
@@ -421,8 +421,8 @@ class Trainer(object):
             with open(os.path.join(config.log_eval_dir, seg_res_fn), 'w') as of:
                 for k, v in acc_dict.items():
                     print(k, v, file=of)
-        if args.local_rank == 0:
-            writer.add_scalars('val_acc', acc_dict, it)
+        # if args.local_rank == 0:
+        #     writer.add_scalars('val_acc', acc_dict, it)
 
         return total_loss / count, eval_dict
 
@@ -525,7 +525,7 @@ class Trainer(object):
 
                             is_best = val_loss < best_loss
                             best_loss = min(best_loss, val_loss)
-                            if args.local_rank == 0:
+                            if True:
                                 save_checkpoint(
                                     checkpoint_state(
                                         self.model, self.optimizer, val_loss, epoch, it

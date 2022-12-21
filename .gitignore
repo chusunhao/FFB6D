@@ -14,3 +14,4 @@ normalSpeed/
 /.idea/
 ****/build/
 ffb6d/models/RandLA/utils/nearest_neighbors/lib/python/KNN_NanoFLANN-0.0.0.egg-info
+/ffb6d/train_log/linemod/checkpoints/cat/FFB6D_cat
